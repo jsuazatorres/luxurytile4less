@@ -1,13 +1,13 @@
 /**
- * LUXURY TILE 4 LESS - CLIENT ENGINE & CMS MANAGER
+ * LUXURY TILE 4 LESS - CLIENT ENGINE & BILINGUAL CMS MANAGER
  */
 
-// Storage keys
 const STORAGE_KEYS = {
   CONFIG: 'lt4l_site_config',
   PRODUCTS: 'lt4l_products',
   SERVICES: 'lt4l_services',
   GALLERY: 'lt4l_gallery',
+  LANG: 'lt4l_language_pref',
   AUTH: 'lt4l_admin_authenticated'
 };
 
@@ -17,6 +17,7 @@ let appState = {
   products: [],
   services: [],
   gallery: [],
+  currentLang: 'en',
   currentCategory: 'all',
   currentFinish: 'all',
   searchQuery: '',
@@ -24,7 +25,7 @@ let appState = {
   isAdmin: false
 };
 
-// Initialize Application
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
   bindEvents();
@@ -32,52 +33,75 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Load data from localStorage or fallback to defaults
+ * Load data & language preference
  */
 function loadData() {
   const storedConfig = localStorage.getItem(STORAGE_KEYS.CONFIG);
   const storedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
   const storedServices = localStorage.getItem(STORAGE_KEYS.SERVICES);
   const storedGallery = localStorage.getItem(STORAGE_KEYS.GALLERY);
+  const storedLang = localStorage.getItem(STORAGE_KEYS.LANG);
 
   appState.config = storedConfig ? JSON.parse(storedConfig) : { ...DEFAULT_SITE_CONFIG };
   appState.products = storedProducts ? JSON.parse(storedProducts) : [ ...DEFAULT_PRODUCTS ];
   appState.services = storedServices ? JSON.parse(storedServices) : [ ...DEFAULT_SERVICES ];
   appState.gallery = storedGallery ? JSON.parse(storedGallery) : [ ...DEFAULT_GALLERY ];
+  appState.currentLang = storedLang || 'en';
 
-  // Save if not present
   if (!storedConfig) localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(appState.config));
   if (!storedProducts) localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(appState.products));
   if (!storedServices) localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(appState.services));
   if (!storedGallery) localStorage.setItem(STORAGE_KEYS.GALLERY, JSON.stringify(appState.gallery));
+  if (!storedLang) localStorage.setItem(STORAGE_KEYS.LANG, appState.currentLang);
 }
 
-/**
- * Save state back to localStorage
- */
 function persistState() {
   localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(appState.config));
   localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(appState.products));
   localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(appState.services));
   localStorage.setItem(STORAGE_KEYS.GALLERY, JSON.stringify(appState.gallery));
+  localStorage.setItem(STORAGE_KEYS.LANG, appState.currentLang);
 }
+
+/**
+ * Helper to get translation key
+ */
+function t(key) {
+  const lang = appState.currentLang;
+  if (TRANSLATIONS[lang] && TRANSLATIONS[lang][key] !== undefined) {
+    return TRANSLATIONS[lang][key];
+  }
+  // Fallback to English
+  return TRANSLATIONS.en[key] || key;
+}
+
+/**
+ * Switch language function
+ */
+window.switchLanguage = function(lang) {
+  if (lang !== 'en' && lang !== 'es') return;
+  appState.currentLang = lang;
+  localStorage.setItem(STORAGE_KEYS.LANG, lang);
+
+  // Update switcher button active state
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+
+  renderApp();
+  showToast(lang === 'es' ? 'Idioma cambiado a Español 🇪🇸' : 'Language switched to English 🇺🇸', 'info');
+};
 
 /**
  * Bind DOM events
  */
 function bindEvents() {
-  // Mobile menu toggle
-  const mobileToggle = document.getElementById('mobileMenuToggle');
-  const navMenu = document.getElementById('navMenu');
-  if (mobileToggle && navMenu) {
-    mobileToggle.addEventListener('click', () => {
-      navMenu.classList.toggle('active');
+  // Language button clicks
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchLanguage(btn.dataset.lang);
     });
-    // Close on link click
-    navMenu.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', () => navMenu.classList.remove('active'));
-    });
-  }
+  });
 
   // Search input
   const searchInput = document.getElementById('productSearchInput');
@@ -126,7 +150,10 @@ function bindEvents() {
       const resultEl = document.getElementById('calcResultSqft');
       const netEl = document.getElementById('calcResultNet');
       if (resultEl) resultEl.textContent = totalSqft;
-      if (netEl) netEl.textContent = `Base Area: ${netSqft.toFixed(1)} sq.ft + ${(wastePercent * 100)}% for cuts & corners`;
+      if (netEl) {
+        const template = t('calcBaseAreaText');
+        netEl.textContent = template.replace('{net}', netSqft.toFixed(1)).replace('{waste}', (wastePercent * 100));
+      }
     };
 
     calcWidth.addEventListener('input', runCalc);
@@ -144,14 +171,17 @@ function bindEvents() {
       const interest = document.getElementById('contactInterest').value;
       const message = document.getElementById('contactMessage').value;
 
-      // Create WhatsApp message
-      const text = `Hi Luxury Tile 4 Less! My name is ${name} (${phone}). I am interested in: ${interest}. Notes: ${message}`;
+      const isEs = appState.currentLang === 'es';
+      const text = isEs
+        ? `Hola Luxury Tile 4 Less! Mi nombre es ${name} (${phone}). Me interesa: ${interest}. Mensaje: ${message}`
+        : `Hi Luxury Tile 4 Less! My name is ${name} (${phone}). I am interested in: ${interest}. Notes: ${message}`;
+        
       const waUrl = `https://wa.me/${appState.config.whatsappPhone}?text=${encodeURIComponent(text)}`;
       
-      showToast('Thank you! Redirecting to WhatsApp for instant quote...', 'success');
+      showToast(isEs ? '¡Gracias! Redirigiendo a WhatsApp...' : 'Thank you! Redirecting to WhatsApp...', 'success');
       setTimeout(() => {
         window.open(waUrl, '_blank');
-      }, 1200);
+      }, 1000);
       contactForm.reset();
     });
   }
@@ -171,7 +201,7 @@ function bindEvents() {
     });
   });
 
-  // Admin tab switching
+  // Admin tabs
   const adminTabs = document.getElementById('adminTabs');
   if (adminTabs) {
     adminTabs.addEventListener('click', (e) => {
@@ -187,7 +217,7 @@ function bindEvents() {
     });
   }
 
-  // Product Image file input in Admin
+  // Product Image upload in Admin
   const productImageFileInput = document.getElementById('productImageFile');
   const productImagePreview = document.getElementById('productImagePreview');
   const productImageUrlInput = document.getElementById('productImageUrl');
@@ -244,6 +274,7 @@ function bindEvents() {
  * Render complete application UI
  */
 function renderApp() {
+  applyTranslations();
   renderConfig();
   renderProducts();
   renderServices();
@@ -251,29 +282,58 @@ function renderApp() {
 }
 
 /**
- * Render dynamic config info across the site
+ * Apply translations to DOM elements
+ */
+function applyTranslations() {
+  const isEs = appState.currentLang === 'es';
+
+  // Update active state in language selector
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === appState.currentLang);
+  });
+
+  // Translate all elements with data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val) {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.placeholder = val;
+      } else {
+        el.innerHTML = val;
+      }
+    }
+  });
+}
+
+/**
+ * Render dynamic config info
  */
 function renderConfig() {
   const cfg = appState.config;
+  const isEs = appState.currentLang === 'es';
   if (!cfg) return;
 
-  // Title & Tagline
+  // Title
   document.title = `${cfg.businessName} - ${cfg.tagline}`;
   
-  // Ticker Announcement
+  // Announcement
   const banner = document.getElementById('announcementBannerText');
-  if (banner) banner.textContent = cfg.bannerAnnouncement;
+  if (banner) banner.textContent = isEs ? (cfg.bannerAnnouncementEs || t('topAnnouncement')) : (cfg.bannerAnnouncement || t('topAnnouncement'));
 
-  // Contact info elements
+  // Contacts
   const phoneEls = document.querySelectorAll('.bind-phone');
   phoneEls.forEach(el => {
-    el.textContent = cfg.phone;
+    el.textContent = cfg.phoneDisplay || cfg.phone;
     el.href = `tel:${cfg.phone.replace(/[^0-9]/g, '')}`;
   });
 
   const waLinks = document.querySelectorAll('.bind-whatsapp-link');
+  const defaultWaText = isEs 
+    ? 'Hola Luxury Tile 4 Less! Quisiera consultar sobre sus baldosas y servicios.'
+    : 'Hello Luxury Tile 4 Less! I would like to inquire about your tiles and services.';
   waLinks.forEach(el => {
-    el.href = `https://wa.me/${cfg.whatsappPhone}?text=${encodeURIComponent('Hello Luxury Tile 4 Less! I would like to inquire about your tiles and services.')}`;
+    el.href = `https://wa.me/${cfg.whatsappPhone}?text=${encodeURIComponent(defaultWaText)}`;
   });
 
   const emailEls = document.querySelectorAll('.bind-email');
@@ -288,9 +348,7 @@ function renderConfig() {
   });
 
   const mapsLinks = document.querySelectorAll('.bind-maps-link');
-  mapsLinks.forEach(el => {
-    el.href = cfg.googleMapsUrl;
-  });
+  mapsLinks.forEach(el => { el.href = cfg.googleMapsUrl; });
 
   const fbLinks = document.querySelectorAll('.bind-facebook-link');
   fbLinks.forEach(el => { el.href = cfg.facebookUrl; });
@@ -298,62 +356,71 @@ function renderConfig() {
   const igLinks = document.querySelectorAll('.bind-instagram-link');
   igLinks.forEach(el => { el.href = cfg.instagramUrl; });
 
-  // Hero elements
-  const heroTitle = document.getElementById('heroTitle');
-  if (heroTitle) heroTitle.innerHTML = cfg.heroTitle.replace('Wholesale Prices', '<span class="text-gold">Wholesale Prices</span>');
-
-  const heroSubtitle = document.getElementById('heroSubtitle');
-  if (heroSubtitle) heroSubtitle.textContent = cfg.heroSubtitle;
-
-  // Showroom Hours
+  // Hours
   const hoursWeekdayEl = document.getElementById('hoursWeekday');
-  if (hoursWeekdayEl) hoursWeekdayEl.textContent = cfg.hoursWeekday;
+  if (hoursWeekdayEl) hoursWeekdayEl.textContent = isEs ? cfg.hoursWeekdayEs : cfg.hoursWeekday;
   const hoursSaturdayEl = document.getElementById('hoursSaturday');
-  if (hoursSaturdayEl) hoursSaturdayEl.textContent = cfg.hoursSaturday;
+  if (hoursSaturdayEl) hoursSaturdayEl.textContent = isEs ? cfg.hoursSaturdayEs : cfg.hoursSaturday;
   const hoursSundayEl = document.getElementById('hoursSunday');
-  if (hoursSundayEl) hoursSundayEl.textContent = cfg.hoursSunday;
+  if (hoursSundayEl) hoursSundayEl.textContent = isEs ? cfg.hoursSundayEs : cfg.hoursSunday;
 }
 
 /**
- * Render products in catalog
+ * Render products in catalog with bilingual support
  */
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
   if (!grid) return;
 
+  const isEs = appState.currentLang === 'es';
+
   // Filter products
   const filtered = appState.products.filter(item => {
     const matchesCategory = (appState.currentCategory === 'all') || (item.category === appState.currentCategory);
     const matchesFinish = (appState.currentFinish === 'all') || (item.finish === appState.currentFinish);
+    const nameToSearch = (isEs && item.nameEs ? item.nameEs : item.name).toLowerCase();
+    const descToSearch = (isEs && item.descriptionEs ? item.descriptionEs : item.description).toLowerCase();
     const matchesQuery = !appState.searchQuery || 
-      item.name.toLowerCase().includes(appState.searchQuery) ||
+      nameToSearch.includes(appState.searchQuery) ||
       item.size.toLowerCase().includes(appState.searchQuery) ||
-      item.description.toLowerCase().includes(appState.searchQuery);
+      descToSearch.includes(appState.searchQuery);
 
     return matchesCategory && matchesFinish && matchesQuery;
   });
 
   if (filtered.length === 0) {
     grid.innerHTML = `
-      <div class="catalog-empty-state">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; background: #FFFFFF; border-radius: var(--radius-md); border: 1px dashed var(--color-border);">
         <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔍</div>
-        <h3 style="font-family: var(--font-serif); font-size: 1.35rem; margin-bottom: 0.5rem;">No matching tiles found</h3>
-        <p style="color: var(--color-text-muted); margin-bottom: 1.25rem;">Try adjusting your search terms or filters.</p>
-        <button class="btn btn-outline btn-sm" onclick="resetFilters()">Clear All Filters</button>
+        <h3 style="font-family: var(--font-serif); font-size: 1.35rem; margin-bottom: 0.5rem;">
+          ${isEs ? 'No se encontraron baldosas' : 'No matching tiles found'}
+        </h3>
+        <p style="color: var(--color-text-muted); margin-bottom: 1.25rem;">
+          ${isEs ? 'Intenta ajustando tus términos de búsqueda o filtros.' : 'Try adjusting your search terms or filters.'}
+        </p>
+        <button class="btn btn-outline-dark btn-sm" onclick="resetFilters()">
+          ${isEs ? 'Limpiar Filtros' : 'Clear All Filters'}
+        </button>
       </div>
     `;
     return;
   }
 
   grid.innerHTML = filtered.map(prod => {
-    const waText = encodeURIComponent(`Hi Luxury Tile 4 Less! I am interested in quoting: ${prod.name} (${prod.size}, ${prod.finish}).`);
+    const displayName = isEs && prod.nameEs ? prod.nameEs : prod.name;
+    const displayDesc = isEs && prod.descriptionEs ? prod.descriptionEs : prod.description;
+    const displayBadge = isEs && prod.badgeEs ? prod.badgeEs : prod.badge;
+
+    const waText = isEs
+      ? encodeURIComponent(`Hola Luxury Tile 4 Less! Me interesa cotizar: ${displayName} (${prod.size}, acabado ${prod.finish}).`)
+      : encodeURIComponent(`Hi Luxury Tile 4 Less! I am interested in quoting: ${displayName} (${prod.size}, ${prod.finish}).`);
     const waUrl = `https://wa.me/${appState.config.whatsappPhone}?text=${waText}`;
 
     return `
       <article class="product-card" data-id="${prod.id}">
         <div class="product-media" onclick="openProductDetail('${prod.id}')">
-          <img src="${prod.image}" alt="${prod.name}" loading="lazy" onerror="this.src='assets/product-calacatta.jpg'">
-          ${prod.badge ? `<span class="product-badge">${prod.badge}</span>` : ''}
+          <img src="${prod.image}" alt="${displayName}" loading="lazy" onerror="this.src='assets/product-calacatta.jpg'">
+          ${displayBadge ? `<span class="product-badge">${displayBadge}</span>` : ''}
           <span class="product-finish-pill">${prod.finish}</span>
         </div>
         <div class="product-content">
@@ -361,17 +428,17 @@ function renderProducts() {
             <span>📐 ${prod.size}</span>
             ${prod.thickness ? `<span>• ${prod.thickness}</span>` : ''}
           </div>
-          <h3 class="product-name" onclick="openProductDetail('${prod.id}')" style="cursor: pointer;">${prod.name}</h3>
-          <p class="product-desc">${prod.description}</p>
+          <h3 class="product-name" onclick="openProductDetail('${prod.id}')" style="cursor: pointer;">${displayName}</h3>
+          <p class="product-desc">${displayDesc}</p>
           <div class="product-footer">
             <div class="product-price-block">
-              <span class="price-label">Price / Unit</span>
-              <span class="product-price">${prod.price || 'Contact for Quote'}</span>
+              <span class="price-label">${t('priceLabel')}</span>
+              <span class="product-price">${prod.price || 'Quote'}</span>
             </div>
             <div class="product-actions-row">
-              <button class="btn-quick-view" onclick="openProductDetail('${prod.id}')" title="View details">👁</button>
-              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-quote-wa" title="Quote on WhatsApp">
-                <span>💬 Quote</span>
+              <button class="btn-quick-view" onclick="openProductDetail('${prod.id}')" title="${t('viewDetails')}">👁</button>
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-quote-wa" title="${t('quoteBtn')} WhatsApp">
+                <span>💬 ${t('quoteBtn')}</span>
               </a>
             </div>
           </div>
@@ -412,21 +479,29 @@ function renderServices() {
   const container = document.getElementById('servicesGrid');
   if (!container) return;
 
-  container.innerHTML = appState.services.map(serv => `
-    <div class="service-card">
-      <div class="service-image-wrapper">
-        <img src="${serv.image}" alt="${serv.title}" loading="lazy">
-      </div>
-      <div class="service-body">
-        <span class="service-subtitle">${serv.subtitle}</span>
-        <h3 class="service-title">${serv.title}</h3>
-        <p class="service-desc">${serv.description}</p>
-        <div style="margin-top: auto;">
-          <a href="#contact" class="btn btn-outline btn-sm">Request Free Estimate →</a>
+  const isEs = appState.currentLang === 'es';
+
+  container.innerHTML = appState.services.map(serv => {
+    const title = isEs && serv.titleEs ? serv.titleEs : serv.title;
+    const subtitle = isEs && serv.subtitleEs ? serv.subtitleEs : serv.subtitle;
+    const desc = isEs && serv.descriptionEs ? serv.descriptionEs : serv.description;
+
+    return `
+      <div class="service-card">
+        <div class="service-image-wrapper">
+          <img src="${serv.image}" alt="${title}" loading="lazy">
+        </div>
+        <div class="service-body">
+          <span class="service-subtitle">${subtitle}</span>
+          <h3 class="service-title">${title}</h3>
+          <p class="service-desc">${desc}</p>
+          <div style="margin-top: auto;">
+            <a href="#contact" class="btn btn-outline-dark btn-sm">${t('requestEstimate')}</a>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 /**
@@ -436,15 +511,22 @@ function renderGallery() {
   const container = document.getElementById('galleryGrid');
   if (!container) return;
 
-  container.innerHTML = appState.gallery.map(item => `
-    <div class="gallery-item" onclick="openGalleryLightbox('${item.image}', '${item.title}')">
-      <img src="${item.image}" alt="${item.title}" loading="lazy">
-      <div class="gallery-overlay">
-        <span class="gallery-tag">${item.tag}</span>
-        <h4 class="gallery-title">${item.title}</h4>
+  const isEs = appState.currentLang === 'es';
+
+  container.innerHTML = appState.gallery.map(item => {
+    const title = isEs && item.titleEs ? item.titleEs : item.title;
+    const tag = isEs && item.tagEs ? item.tagEs : item.tag;
+
+    return `
+      <div class="gallery-item" onclick="openGalleryLightbox('${item.image}', '${title}')">
+        <img src="${item.image}" alt="${title}" loading="lazy">
+        <div class="gallery-overlay">
+          <span class="gallery-tag">${tag}</span>
+          <h4 class="gallery-title">${title}</h4>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 /**
@@ -454,61 +536,61 @@ window.openProductDetail = function(productId) {
   const product = appState.products.find(p => p.id === productId);
   if (!product) return;
 
+  const isEs = appState.currentLang === 'es';
   const modal = document.getElementById('productDetailModal');
   const container = document.getElementById('productDetailContent');
   if (!modal || !container) return;
 
-  const waText = encodeURIComponent(`Hi Luxury Tile 4 Less! I am interested in ordering/quoting: ${product.name} (${product.size}).`);
+  const displayName = isEs && product.nameEs ? product.nameEs : product.name;
+  const displayDesc = isEs && product.descriptionEs ? product.descriptionEs : product.description;
+
+  const waText = isEs 
+    ? encodeURIComponent(`Hola Luxury Tile 4 Less! Me interesa cotizar/ordenar: ${displayName} (${product.size}).`)
+    : encodeURIComponent(`Hi Luxury Tile 4 Less! I am interested in ordering/quoting: ${displayName} (${product.size}).`);
   const waUrl = `https://wa.me/${appState.config.whatsappPhone}?text=${waText}`;
 
   container.innerHTML = `
     <div class="product-modal-grid">
       <div>
-        <img src="${product.image}" alt="${product.name}" class="modal-product-img">
+        <img src="${product.image}" alt="${displayName}" class="modal-product-img">
       </div>
       <div class="modal-product-details">
         <span class="section-tag" style="align-self: flex-start;">${product.category.toUpperCase()}</span>
-        <h2 style="font-family: var(--font-serif); font-size: 1.85rem; margin-bottom: 0.5rem;">${product.name}</h2>
-        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-primary); margin-bottom: 1rem;">
+        <h2 style="font-family: var(--font-serif); font-size: 1.85rem; margin-bottom: 0.5rem; color: var(--color-text-main);">${displayName}</h2>
+        <div style="font-size: 1.6rem; font-weight: 800; color: var(--color-brand-red); margin-bottom: 1rem;">
           ${product.price}
         </div>
         <p style="color: var(--color-text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
-          ${product.description}
+          ${displayDesc}
         </p>
         
         <ul class="modal-spec-list">
           <li class="modal-spec-item">
-            <span>Dimensions</span>
+            <span>${isEs ? 'Dimensiones' : 'Dimensions'}</span>
             <span>${product.size}</span>
           </li>
           <li class="modal-spec-item">
-            <span>Surface Finish</span>
+            <span>${isEs ? 'Acabado' : 'Surface Finish'}</span>
             <span style="text-transform: capitalize;">${product.finish}</span>
           </li>
           <li class="modal-spec-item">
-            <span>Thickness</span>
+            <span>${isEs ? 'Espesor' : 'Thickness'}</span>
             <span>${product.thickness || 'Standard'}</span>
           </li>
           <li class="modal-spec-item">
-            <span>Stock Status</span>
+            <span>${isEs ? 'Disponibilidad' : 'Stock Status'}</span>
             <span style="color: ${product.inStock ? '#10B981' : '#F59E0B'};">
-              ${product.inStock ? '● In Stock (Port St. Lucie)' : '● Special Order'}
+              ${product.inStock ? `● ${t('modalInStock')}` : `● ${t('modalSpecialOrder')}`}
             </span>
           </li>
-          ${product.applications ? `
-            <li class="modal-spec-item">
-              <span>Ideal Applications</span>
-              <span>${product.applications.join(', ')}</span>
-            </li>
-          ` : ''}
         </ul>
 
         <div style="display: flex; gap: 1rem; margin-top: auto; flex-wrap: wrap;">
           <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp" style="flex: 1;">
-            <span>💬 Quote via WhatsApp</span>
+            <span>💬 ${t('modalQuoteWa')}</span>
           </a>
-          <a href="tel:${appState.config.phone.replace(/[^0-9]/g, '')}" class="btn btn-outline" style="flex: 1;">
-            <span>📞 Call Showroom</span>
+          <a href="tel:${appState.config.phone.replace(/[^0-9]/g, '')}" class="btn btn-outline-dark" style="flex: 1;">
+            <span>📞 ${t('modalCall')}</span>
           </a>
         </div>
       </div>
@@ -529,32 +611,28 @@ window.openGalleryLightbox = function(imageUrl, title) {
   container.innerHTML = `
     <div style="padding: 2rem; text-align: center;">
       <img src="${imageUrl}" alt="${title}" style="max-height: 70vh; width: auto; margin: 0 auto; border-radius: var(--radius-md);">
-      <h3 style="font-family: var(--font-serif); font-size: 1.4rem; color: #FFFFFF; margin-top: 1.25rem;">${title}</h3>
-      <p style="color: var(--color-primary); font-size: 0.9rem; margin-top: 0.25rem;">Luxury Tile 4 Less Project Portfolio</p>
+      <h3 style="font-family: var(--font-serif); font-size: 1.4rem; color: #1A1D20; margin-top: 1.25rem;">${title}</h3>
+      <p style="color: var(--color-brand-red); font-size: 0.9rem; margin-top: 0.25rem; font-weight: 700;">Luxury Tile 4 Less Project Portfolio</p>
     </div>
   `;
 
   modal.classList.add('active');
 };
 
-/**
- * Close all open modals
- */
 function closeAllModals() {
   document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('active'));
 }
 
 /**
- * ADMIN CMS LOGIC
+ * ADMIN CMS MODAL
  */
 function openAdminModal() {
   const modal = document.getElementById('adminModal');
   if (!modal) return;
 
-  // Check authentication
   const isAuth = sessionStorage.getItem(STORAGE_KEYS.AUTH);
   if (!isAuth) {
-    const pin = prompt('Enter Admin Password / PIN (Default is: admin123):');
+    const pin = prompt('Enter Admin Password / Contraseña (Default: admin123):');
     if (pin !== appState.config.adminPin) {
       alert('Incorrect password. Access denied.');
       return;
@@ -562,16 +640,11 @@ function openAdminModal() {
     sessionStorage.setItem(STORAGE_KEYS.AUTH, 'true');
   }
 
-  // Populate Admin views
   populateAdminProductTable();
   populateAdminSettingsForm();
-
   modal.classList.add('active');
 }
 
-/**
- * Populate products list in Admin
- */
 function populateAdminProductTable() {
   const tbody = document.getElementById('adminProductTableBody');
   if (!tbody) return;
@@ -586,9 +659,9 @@ function populateAdminProductTable() {
         <small style="color: var(--color-text-muted);">${prod.size} | ${prod.finish}</small>
       </td>
       <td><span class="cat-pill" style="padding: 2px 8px; font-size: 0.7rem;">${prod.category}</span></td>
-      <td><strong>${prod.price}</strong></td>
+      <td><strong style="color: var(--color-brand-red);">${prod.price}</strong></td>
       <td>
-        <span style="color: ${prod.inStock ? '#10B981' : '#F59E0B'}; font-size: 0.8rem;">
+        <span style="color: ${prod.inStock ? '#10B981' : '#F59E0B'}; font-size: 0.8rem; font-weight: 700;">
           ${prod.inStock ? '● In Stock' : '● Special Order'}
         </span>
       </td>
@@ -600,9 +673,6 @@ function populateAdminProductTable() {
   `).join('');
 }
 
-/**
- * Populate settings form in Admin
- */
 function populateAdminSettingsForm() {
   const cfg = appState.config;
   if (!cfg) return;
@@ -616,25 +686,19 @@ function populateAdminSettingsForm() {
   setVal('settingWhatsapp', cfg.whatsappPhone);
   setVal('settingEmail', cfg.email);
   setVal('settingAddress', cfg.address);
-  setVal('settingHeroTitle', cfg.heroTitle);
-  setVal('settingHeroSubtitle', cfg.heroSubtitle);
-  setVal('settingBanner', cfg.bannerAnnouncement);
   setVal('settingAdminPin', cfg.adminPin);
 }
 
-/**
- * Edit existing product
- */
 window.editProduct = function(productId) {
   const product = appState.products.find(p => p.id === productId);
   if (!product) return;
 
   appState.editingProductId = productId;
 
-  // Switch to Form tab or populate modal
   document.getElementById('productFormTitle').textContent = `Edit Product: ${product.name}`;
   document.getElementById('prodId').value = product.id;
   document.getElementById('prodName').value = product.name;
+  document.getElementById('prodNameEs').value = product.nameEs || product.name;
   document.getElementById('prodCategory').value = product.category;
   document.getElementById('prodFinish').value = product.finish;
   document.getElementById('prodSize').value = product.size;
@@ -642,6 +706,7 @@ window.editProduct = function(productId) {
   document.getElementById('prodPrice').value = product.price;
   document.getElementById('productImageUrl').value = product.image;
   document.getElementById('prodDesc').value = product.description;
+  document.getElementById('prodDescEs').value = product.descriptionEs || product.description;
   document.getElementById('prodBadge').value = product.badge || '';
   document.getElementById('prodInStock').checked = !!product.inStock;
   document.getElementById('prodFeatured').checked = !!product.featured;
@@ -652,14 +717,10 @@ window.editProduct = function(productId) {
     preview.style.display = 'block';
   }
 
-  // Switch to products form tab
   const formTabBtn = document.querySelector('[data-tab="adminTabProductForm"]');
   if (formTabBtn) formTabBtn.click();
 };
 
-/**
- * Reset Product Form to "Add New"
- */
 window.resetProductForm = function() {
   appState.editingProductId = null;
   document.getElementById('productFormTitle').textContent = '➕ Add New Tile / Product';
@@ -669,14 +730,11 @@ window.resetProductForm = function() {
   if (preview) preview.style.display = 'none';
 };
 
-/**
- * Delete product
- */
 window.deleteProduct = function(productId) {
   const product = appState.products.find(p => p.id === productId);
   if (!product) return;
 
-  if (confirm(`Are you sure you want to delete "${product.name}"? This cannot be undone.`)) {
+  if (confirm(`Are you sure you want to delete "${product.name}"?`)) {
     appState.products = appState.products.filter(p => p.id !== productId);
     persistState();
     populateAdminProductTable();
@@ -685,14 +743,12 @@ window.deleteProduct = function(productId) {
   }
 };
 
-/**
- * Save Product Handler (Create or Update)
- */
 function handleSaveProduct(e) {
   e.preventDefault();
 
   const id = document.getElementById('prodId').value || `prod-${Date.now()}`;
   const name = document.getElementById('prodName').value.trim();
+  const nameEs = document.getElementById('prodNameEs').value.trim() || name;
   const category = document.getElementById('prodCategory').value;
   const finish = document.getElementById('prodFinish').value;
   const size = document.getElementById('prodSize').value.trim();
@@ -700,6 +756,7 @@ function handleSaveProduct(e) {
   const price = document.getElementById('prodPrice').value.trim();
   const image = document.getElementById('productImageUrl').value.trim() || 'assets/product-calacatta.jpg';
   const description = document.getElementById('prodDesc').value.trim();
+  const descriptionEs = document.getElementById('prodDescEs').value.trim() || description;
   const badge = document.getElementById('prodBadge').value.trim();
   const inStock = document.getElementById('prodInStock').checked;
   const featured = document.getElementById('prodFeatured').checked;
@@ -707,6 +764,7 @@ function handleSaveProduct(e) {
   const productData = {
     id,
     name,
+    nameEs,
     category,
     finish,
     size,
@@ -714,7 +772,9 @@ function handleSaveProduct(e) {
     price,
     image,
     description,
+    descriptionEs,
     badge,
+    badgeEs: badge,
     inStock,
     featured
   };
@@ -732,15 +792,11 @@ function handleSaveProduct(e) {
   populateAdminProductTable();
   renderProducts();
 
-  // Reset form and return to table tab
   resetProductForm();
   const listTabBtn = document.querySelector('[data-tab="adminTabProducts"]');
   if (listTabBtn) listTabBtn.click();
 }
 
-/**
- * Save Settings Handler
- */
 function handleSaveSettings(e) {
   e.preventDefault();
 
@@ -748,9 +804,6 @@ function handleSaveSettings(e) {
   appState.config.whatsappPhone = document.getElementById('settingWhatsapp').value.replace(/[^0-9]/g, '');
   appState.config.email = document.getElementById('settingEmail').value.trim();
   appState.config.address = document.getElementById('settingAddress').value.trim();
-  appState.config.heroTitle = document.getElementById('settingHeroTitle').value.trim();
-  appState.config.heroSubtitle = document.getElementById('settingHeroSubtitle').value.trim();
-  appState.config.bannerAnnouncement = document.getElementById('settingBanner').value.trim();
   
   const newPin = document.getElementById('settingAdminPin').value.trim();
   if (newPin) appState.config.adminPin = newPin;
@@ -760,9 +813,6 @@ function handleSaveSettings(e) {
   showToast('Settings saved successfully!', 'success');
 }
 
-/**
- * Export data as JSON file for backup
- */
 function handleExportData() {
   const exportPayload = {
     config: appState.config,
@@ -783,9 +833,6 @@ function handleExportData() {
   showToast('Database exported to JSON file!', 'success');
 }
 
-/**
- * Import data from JSON file
- */
 function handleImportData(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -816,11 +863,8 @@ function handleImportData(e) {
   reader.readAsText(file);
 }
 
-/**
- * Reset database to default
- */
 function handleResetData() {
-  if (confirm('Are you sure you want to reset all products and texts to the original defaults? Custom additions will be overwritten.')) {
+  if (confirm('Are you sure you want to reset all products and texts to the original defaults?')) {
     localStorage.clear();
     loadData();
     renderApp();
@@ -830,9 +874,6 @@ function handleResetData() {
   }
 }
 
-/**
- * Toast Notification Utility
- */
 function showToast(message, type = 'info') {
   let toast = document.getElementById('globalToast');
   if (!toast) {
@@ -843,14 +884,14 @@ function showToast(message, type = 'info') {
       bottom: 2rem;
       left: 50%;
       transform: translateX(-50%) translateY(100px);
-      background: #14181E;
+      background: #1A1D20;
       color: #FFFFFF;
-      border: 1px solid var(--color-primary);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 1px solid var(--color-brand-red);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
       border-radius: var(--radius-full);
       padding: 0.85rem 1.75rem;
       font-size: 0.925rem;
-      font-weight: 600;
+      font-weight: 700;
       z-index: 9999;
       transition: transform 0.3s ease, opacity 0.3s ease;
       opacity: 0;
@@ -862,12 +903,7 @@ function showToast(message, type = 'info') {
     document.body.appendChild(toast);
   }
 
-  const icons = {
-    success: '✅',
-    info: 'ℹ️',
-    warning: '⚠️'
-  };
-
+  const icons = { success: '✅', info: 'ℹ️', warning: '⚠️' };
   toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span> <span>${message}</span>`;
   toast.style.transform = 'translateX(-50%) translateY(0)';
   toast.style.opacity = '1';
