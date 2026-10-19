@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadData();
   bindEvents();
   renderApp();
+  initHeroCarousel();
 });
 
 /**
@@ -914,3 +915,77 @@ function showToast(message, type = 'info') {
     toast.style.opacity = '0';
   }, 3500);
 }
+
+/**
+ * Hero Background Carousel Engine (Rotates every 5 seconds)
+ */
+function initHeroCarousel() {
+  const track = document.getElementById('heroCarouselTrack');
+  if (!track) return;
+
+  const slides = track.querySelectorAll('.hero-slide');
+  const dotsContainer = document.getElementById('heroCarouselDots');
+  const dots = dotsContainer ? dotsContainer.querySelectorAll('.hero-dot') : [];
+  const prevBtn = document.getElementById('heroPrevBtn');
+  const nextBtn = document.getElementById('heroNextBtn');
+
+  if (slides.length <= 1) return;
+
+  let currentSlideIndex = 0;
+  let carouselTimer = null;
+  const ROTATION_INTERVAL = 5000; // 5 seconds exactly
+
+  function goToSlide(index) {
+    slides[currentSlideIndex].classList.remove('active');
+    if (dots[currentSlideIndex]) dots[currentSlideIndex].classList.remove('active');
+
+    currentSlideIndex = (index + slides.length) % slides.length;
+
+    slides[currentSlideIndex].classList.add('active');
+    if (dots[currentSlideIndex]) dots[currentSlideIndex].classList.add('active');
+  }
+
+  function nextSlide() {
+    goToSlide(currentSlideIndex + 1);
+  }
+
+  function prevSlide() {
+    goToSlide(currentSlideIndex - 1);
+  }
+
+  function startAutoRotation() {
+    stopAutoRotation();
+    carouselTimer = setInterval(nextSlide, ROTATION_INTERVAL);
+  }
+
+  function stopAutoRotation() {
+    if (carouselTimer) clearInterval(carouselTimer);
+  }
+
+  // Bind Arrows
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      nextSlide();
+      startAutoRotation();
+    });
+  }
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      prevSlide();
+      startAutoRotation();
+    });
+  }
+
+  // Bind Dots
+  dots.forEach((dot, idx) => {
+    dot.addEventListener('click', () => {
+      goToSlide(idx);
+      startAutoRotation();
+    });
+  });
+
+  // Start initial rotation timer
+  startAutoRotation();
+}
+
