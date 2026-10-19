@@ -19,8 +19,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
 
-  <!-- Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css">
+  <!-- Stylesheet (v2.2 cache buster) -->
+  <link rel="stylesheet" href="css/styles.css?v=2.2">
 </head>
 <body>
 
@@ -61,9 +61,29 @@
     <span id="announcementBannerText" data-i18n="topAnnouncement">🎉 Direct Importer Specials: Up to 40% OFF on Selected 24x48 Porcelain Slabs! Visit Our Showroom Today.</span>
   </div>
 
-  <!-- HERO HEADER (ORIGINAL STYLE: Fireplace Background + Centered Logo + Centered Menu) -->
+  <!-- HERO HEADER WITH 5-SECOND BACKGROUND CAROUSEL -->
   <header class="hero-original-container" id="home">
+    <!-- Carousel Background Slides -->
+    <div class="hero-carousel-track" id="heroCarouselTrack">
+      <div class="hero-slide active" style="background-image: url('assets/hero-original-bg.jpg');" title="Living Room Fireplace & Porcelain Wall"></div>
+      <div class="hero-slide" style="background-image: url('assets/hero-showroom.jpg');" title="Port St. Lucie Tile Showroom"></div>
+      <div class="hero-slide" style="background-image: url('assets/service-bathroom.jpg');" title="Luxury Marble Bathroom Remodel"></div>
+      <div class="hero-slide" style="background-image: url('assets/service-kitchen.jpg');" title="Gourmet Kitchen Quartzite Waterfall Island"></div>
+      <div class="hero-slide" style="background-image: url('assets/hero-patio.jpg');" title="Florida Luxury Patio & Pool Deck Pavers"></div>
+    </div>
+    
     <div class="hero-overlay-shade"></div>
+
+    <!-- Carousel Navigation Controls -->
+    <button class="hero-nav-arrow prev" id="heroPrevBtn" aria-label="Previous Slide">‹</button>
+    <button class="hero-nav-arrow next" id="heroNextBtn" aria-label="Next Slide">›</button>
+    <div class="hero-carousel-dots" id="heroCarouselDots">
+      <button class="hero-dot active" data-slide="0" aria-label="Slide 1"></button>
+      <button class="hero-dot" data-slide="1" aria-label="Slide 2"></button>
+      <button class="hero-dot" data-slide="2" aria-label="Slide 3"></button>
+      <button class="hero-dot" data-slide="3" aria-label="Slide 4"></button>
+      <button class="hero-dot" data-slide="4" aria-label="Slide 5"></button>
+    </div>
 
     <!-- Centered Brand Logo & Navigation -->
     <div class="hero-header-top">
@@ -677,8 +697,8 @@
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="data/initialProducts.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Scripts (v2.2 cache buster) -->
+  <script src="data/initialProducts.js?v=2.2"></script>
+  <script src="js/app.js?v=2.2"></script>
 </body>
 </html>
